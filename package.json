@@ -1,0 +1,79 @@
+{
+  "name": "cld-ipc-bridge",
+  "displayName": "CLD IPC Bridge",
+  "description": "Named-pipe IPC bridge for deterministic chat injection — Coherent Light Designs",
+  "version": "0.4.2",
+  "publisher": "coherentlight",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "keywords": ["multi-agent", "copilot", "codex", "chat", "automation", "ipc"],
+  "repository": { "type": "git", "url": "https://github.com/fashionshowphotos/cld-ipc-bridge" },
+  "homepage": "https://coherent-light.com",
+  "license": "SEE LICENSE IN LICENSE",
+  "activationEvents": ["onStartupFinished"],
+  "main": "./extension.cjs",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cld-ipc-bridge.probeChat",
+        "title": "CLD IPC Bridge: Probe Chat Commands (Spike)"
+      },
+      {
+        "command": "cld-ipc-bridge.debugCodex",
+        "title": "CLD IPC Bridge: Debug Codex Injection"
+      },
+      {
+        "command": "cld-ipc-bridge.showStatus",
+        "title": "CLD IPC Bridge: Show Status"
+      },
+      {
+        "command": "cld-ipc-bridge.copyToken",
+        "title": "CLD IPC Bridge: Copy Auth Token"
+      },
+      {
+        "command": "cld-ipc-bridge.teachCodexManual",
+        "title": "CLD IPC Bridge: Teach Codex Layout (Manual)"
+      },
+      {
+        "command": "cld-ipc-bridge.teachCodex",
+        "title": "CLD IPC Bridge: Teach Codex Layout (VLM)"
+      }
+    ],
+    "configuration": {
+      "title": "CLD IPC Bridge",
+      "properties": {
+        "cld-ipc-bridge.targets.codex.openCommand": {
+          "type": "string",
+          "default": "chatgpt.sidebarView.focus",
+          "description": "VS Code command to focus the Codex sidebar before screen injection"
+        },
+        "cld-ipc-bridge.targets.copilot.openCommand": {
+          "type": "string",
+          "default": "workbench.action.chat.open",
+          "description": "VS Code command to open/focus the Copilot chat panel"
+        },
+        "cld-ipc-bridge.targets.copilot.submitMethod": {
+          "type": "string",
+          "enum": ["query"],
+          "default": "query",
+          "description": "How to insert text into Copilot chat input (only 'query' is safe)"
+        },
+        "cld-ipc-bridge.targets.copilot.submitCommand": {
+          "type": "string",
+          "default": "workbench.action.chat.submit",
+          "description": "VS Code command to submit the Copilot input"
+        },
+        "cld-ipc-bridge.vlm.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "OpenRouter API key for VLM-based Codex layout detection (optional — manual teach preferred)"
+        },
+        "cld-ipc-bridge.vlm.model": {
+          "type": "string",
+          "default": "openai/gpt-4o-mini",
+          "description": "OpenRouter model ID for VLM layout detection"
+        }
+      }
+    }
+  }
+}
