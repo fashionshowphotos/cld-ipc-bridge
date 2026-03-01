@@ -31,12 +31,44 @@ const { AntigravityAdapter } = require('./lib/adapters/antigravity.cjs');
 const { ClineAdapter } = require('./lib/adapters/cline.cjs');
 const { ContinueAdapter } = require('./lib/adapters/continue.cjs');
 
+const fs = require('fs');
+const path = require('path');
+const MANIFEST_DIR = path.join(process.env.APPDATA || '', 'CoherentLight', 'manifests');
+const MANIFEST_FILE = path.join(MANIFEST_DIR, 'coherentlight.cld-ipc-bridge.json');
+const pkg = (() => { try { return require('./package.json'); } catch { return {}; } })();
+
 let server = null;
 let router = null;
 let instanceId = null;
 let token = null;
 let outputChannel = null;
 let deferredReprobeTimer = null;
+let _lastCaps = null;
+let _editorName = null;
+
+function writeManifest() {
+  try {
+    fs.mkdirSync(MANIFEST_DIR, { recursive: true });
+    const manifest = {
+      id: 'coherentlight.cld-ipc-bridge',
+      displayName: 'CLD IPC Bridge',
+      version: pkg.version || '0.4.2',
+      state: {
+        listening: !!server,
+        instanceId: instanceId || null,
+        editorName: _editorName || null,
+        targets: _lastCaps ? _lastCaps.targets : {},
+      },
+      capabilities: {
+        commands: ['manifest', 'showStatus', 'copyToken', 'probeChat', 'teachCodexManual', 'teachCodex', 'debugCodex'],
+        rpcTypes: ['chat.submit', 'run-command', 'list-commands', 'reprobe', 'reload'],
+        actions: ['inject text into Copilot/Codex/Antigravity/Cursor chat panels'],
+      },
+      updatedAt: new Date().toISOString(),
+    };
+    fs.writeFileSync(MANIFEST_FILE, JSON.stringify(manifest, null, 2));
+  } catch { /* non-fatal */ }
+}
 
 function log(msg) {
   const ts = new Date().toISOString().slice(11, 23);
@@ -61,6 +93,7 @@ async function activate(context) {
 
   // Detect which editor we're running inside (VS Code, Antigravity, Cursor, etc.)
   const editorName = (vscode.env.appName || 'Visual Studio Code').toLowerCase();
+  _editorName = editorName;
 
   log(`Instance: ${instanceId}`);
   log(`Workspace: ${wsName} (${wsPath})`);
@@ -132,11 +165,15 @@ async function activate(context) {
     capabilities
   });
   log('Registry entry written');
+  _lastCaps = capabilities;
+  writeManifest();
 
   // 6b. NOW kick off adapter probing (registry file exists, so updateCapabilities won't be swallowed)
   probePromise = probeAdapters(adapters).then(caps => {
     if (server) server.setCapabilities(caps);
     updateCapabilities(instanceId, caps);
+    _lastCaps = caps;
+    writeManifest();
     log(`Capabilities updated: ${JSON.stringify(caps)}`);
 
     // 6c. Deferred re-probe: some editors (Antigravity) register commands lazily.
@@ -149,6 +186,8 @@ async function activate(context) {
         const caps2 = await probeAdapters(adapters);
         if (server) server.setCapabilities(caps2);
         updateCapabilities(instanceId, caps2);
+        _lastCaps = caps2;
+        writeManifest();
         log(`Deferred capabilities: ${JSON.stringify(caps2)}`);
       }, 10_000);
     }
@@ -309,6 +348,12 @@ async function activate(context) {
         log(`Manual teach failed: ${result.error}`);
         vscode.window.showWarningMessage(`Codex layout teach failed: ${result.error}`);
       }
+    }),
+
+    // ── Manifest — live self-description for AI Control ──
+    vscode.commands.registerCommand('cld-ipc-bridge.manifest', () => {
+      writeManifest();
+      try { return JSON.parse(fs.readFileSync(MANIFEST_FILE, 'utf8')); } catch { return null; }
     }),
 
     // ── Teach Codex Layout (VLM — explicit opt-in with warning) ──
